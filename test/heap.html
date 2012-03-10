@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Heap test</title>
+    <script type="text/javascript" src="../utils/Heap.js"></script>
+    <script type="text/javascript">
+        function addRemove () {
+            var h, arr = [], N = 1000000;
+            for (var i = 0; i < N; i++) {
+                arr.push(Math.random());
+            }
+            console.time('addRemove');
+            h = new Heap();
+            for (var i = 0; i < N; i++) {
+                h.push(arr[i]);
+            }
+            console.timeEnd('addRemove');
+            var last = -1, curr;
+            for (var i = 0; i < N; i++) {
+                if (!(last <= (curr = h.pop()))) {
+                    alert('wrong');
+                }
+            }
+            console.log('addRemove ok');
+        }
+        function makeHeap () {
+            var h, arr = [], N = 1000000;
+            for (var i = 0; i < N; i++) {
+                arr.push(Math.random());
+            }
+            console.time('makeHeap');
+            h = new Heap(false, arr);
+            console.timeEnd('makeHeap');
+            var last = -1, curr;
+            for (var i = 0; i < N; i++) {
+                if (!(last <= (curr = h.pop()))) {
+                    alert('wrong');
+                }
+            }
+            arr = h.array;
+            var p, len = h.array.length, cmp = h.cmp;
+            for (var i = 0; i < h.array.length; i++) {
+                p = h.array[i];
+                if ((i << 1) + 1 < len && cmp(arr[(i << 1) + 1], p) || (i << 1) + 2 < len && cmp(arr[(i << 1) + 2], p)) {
+                    alert('wrong');
+                }
+            }
+            console.log('makeHeap ok');
+        }
+        addRemove();
+        makeHeap();
+    </script>
+</head>
+<body>
+
+</body>
+</html>
