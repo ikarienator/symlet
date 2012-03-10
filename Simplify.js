@@ -1,370 +1,389 @@
-/**
- * Simplify
- */
-(function() {
-    var simplify;
-    function complexity(ast) {
-        if (ast.complexity) {
-            return ast.complexity;
-        }
-        if (ast[0] == 'num') {
-            return 1;
-        }
-        var c = 2;
-        for (var i = 1; i < ast.length; i++) {
-            c += complexity(ast[i]);
-        }
-        return ast.complexity = c;
-    }
+window.cache = new ASTCache();
+var rules = [
+    ['call', 'log', ['^', '#1', '#2']],
+    ['*', ['call', 'log', '#1'], '#2']
+];
 
-    function fixed(ast) {
-        if (ast[0] == 'ident') {
-            return !(ast[1] == 'x' || ast[1] == 'y' || ast[1] == 't');
-        }
-        for (var i = 1; i < ast.length; i++) {
-            if (!fixed(ast[i])) {
-                return false;
+var explodeCache = {},
+    factorCache = {};
+
+function simplifyFactor(ast) {
+    if (factorCache[cache.find(ast)]) {
+        return factorCache[cache.find(ast)];
+    }
+    return factorCache[cache.find(ast)] = doSimplifyFactor(ast);
+}
+function doSimplifyFactor(ast) {
+    if (fixed(ast)) {
+        return ['num', evaluate(ast)];
+    }
+    switch (ast[0]) {
+        case '.+':
+            return simplifyFactor(ast[1]);
+        case '.-':
+            while (ast[1][0] === '.-') {
+                ast = ast[1][1];
             }
-        }
-        return true;
-    }
-
-    function evaluate(ast) {
-        switch (ast[0]) {
-            case 'ident' :
-                if (ast[1] == 'PI') {
-                    return 3.141592653589793;
-                } else if (ast[1] == 'E') {
-                    return 2.718281828459045;
-                } else {
-                    return NaN;
-                }
-            case 'num':
-                return ast[1];
-            case '.+':
-                return evaluate(ast[1]);
-            case '.-':
-                return -evaluate(ast[1]);
-            case '+':
-                return evaluate(ast[1]) + evaluate(ast[2]);
-            case '-':
-                return evaluate(ast[1]) - evaluate(ast[2]);
-            case '*':
-                return evaluate(ast[1]) * evaluate(ast[2]);
-            case '/':
-                return evaluate(ast[1]) / evaluate(ast[2]);
-            case '^':
-                return Math.pow(evaluate(ast[1]), evaluate(ast[2]));
-            case 'call':
-                var arg = evaluate(ast[2]);
-                switch (ast[1]) {
-                    case 'sin':
-                        return Math.sin(arg);
-                    case 'cos':
-                        return Math.cos(arg);
-                    case 'tan':
-                        return Math.tan(arg);
-                    case 'acos':
-                        return Math.acos(arg);
-                    case 'asin':
-                        return Math.asin(arg);
-                    case 'atan':
-                        return Math.atan(arg);
-                    case 'sqrt':
-                        return Math.sqrt(arg);
-                    case 'exp':
-                        return Math.exp(arg);
-                    case 'log':
-                        return Math.log(arg);
-                    case 'sinc':
-                        if (arg == 0) return 1;
-                        return Math.sin(arg) / arg;
-                    case 'sincD':
-                        if (arg == 0) return 0;
-                        return Math.cos(arg) / arg - Math.sin(arg) / (arg * arg);
-                    case 'sh':
-                        var exp = Math.exp(arg);
-                        return (exp - 1 / exp) / 2;
-                    case 'ch':
-                        var exp = Math.exp(arg);
-                        return (exp + 1 / exp) / 2;
-                    case 'th':
-                        var exp = Math.exp(2 * arg);
-                        return 1 - 2 / (exp + 1);
-                }
-        }
-    }
-
-    function expand(ast, flip) {
-        if (ast[0] == '+') {
-            return expand(ast[1], flip).concat(expand(ast[2], flip));
-        } else if (ast[0] == '-') {
-            return expand(ast[1], flip).concat(expand(ast[2], !flip));
-        } else if (ast[0] == '.+') {
-            return expand(ast[1], flip);
-        } else if (ast[1] == '.-') {
-            return expand(ast[1], !flip);
-        } else {
-            if (flip) {
-                return [
-                    ['.-', ast]
-                ];
-            } else {
-                return [ast];
-            }
-        }
-    }
-
-    function summation(list) {
-        if (list.length == 0) {
-            return ['num', 0];
-        }
-        var result = list[0];
-        for (var i = 1; i < list.length; i++) {
-            if (list[i][0] == '.-') {
-                result = ['-', result, list[i][1]];
-            } else {
-                result = ['+', result, list[i]];
-            }
-
-        }
-        return result;
-    }
-
-    function factorize(ast, flip) {
-        if (ast[0] == '.-') {
-            var list = factorize(ast[1], flip);
-            list[0] = ['.-', list[0]];
-            return list;
-        }
-        if (ast[0] == '*') {
-            return factorize(ast[1], false).concat(factorize(ast[2], false));
-        } else if (ast[0] == '/') {
-            return factorize(ast[1], false).concat(factorize(ast[2], true));
-        } else {
-            if (flip) {
-                if (ast[0] == '^') {
-                    [
-                        ['^', ast[1], ['num', -ast[2]]]
-                    ]
-                }
-                return [
-                    ['^', ast, ['num', -1]]
-                ];
-            } else {
-                return [ast];
-            }
-        }
-    }
-
-    function connect(list) {
-        if (list.length == 0) {
-            return ['num', 1];
-        }
-        var result = list[0];
-        for (var i = 1; i < list.length; i++) {
-            if (list[i][0] == '^' && list[i][2][0] == 'num') {
-                if (list[i][2][1] == -1) {
-                    result = ['/', result, list[i][1]];
-                } else if (list[i][2][1] < 0) {
-                    result = ['/', result, ['^', list[i][1], ['num', -list[i][2][1]]]];
-                } else {
-                    result = ['*', result, list[i]];
-                }
-            } else {
-                result = ['*', result, list[i]];
-            }
-        }
-        return result;
-    }
-
-    function simplifyFactor(ast) {
-        if (fixed(ast)) {
-            return ['num', evaluate(ast)];
-        }
-        if (ast[0] == 'ident') {
+            return ['.-', simplifyFactor(ast[1])];
+            break;
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+            // Simplfy only the factor
+            return [ast[0], simplifyFactor(ast[1]), simplifyFactor(ast[2])];
+        case '^':
+            return [ast[0], simplifyFactor(ast[1]), simplifyFactor(ast[2])];
+        case 'num':
+            throw 'This is not going to happen';
+        case 'ident':
             return ast;
-        }
-        if (ast[0] == '+' || ast[0] == '-') {
-            ast = simplify(ast);
-        }
-        while (ast[0] == '.+') {
-            ast = ast[1];
-        }
-        while (ast[0] == '.-' && ast[1][0] == '.-') {
-            ast = ast[1][1];
-        }
-        if (ast[0] == '.-' && ast[1][0] == 'num') {
-            ast = ['num', -ast[1][1]];
-        }
-        if (ast[0] == '^') {
-            if (ast[1][0] == 'ident' && ast[1][1] == 'E') {
-                return ['call', 'exp', ast[2]];
-            }
-            ast = ['^', simplify(ast[1]), simplify(ast[2])];
-            if (ast[1][0] == 'num') {
-                if (ast[1][1] == 0) {
-                    return ['num', 0];
-                } else if (ast[1][1] == 1) {
-                    return ['num', 1];
-                }
-            }
-            if (ast[2][0] == 'num') {
-                if (ast[2][1] == 0) {
-                    return ['num', 1];
-                } else if (ast[2][1] == 1) {
-                    ast = ast[1];
-                }
-                if (ast[1][0] == '.-') {
-                    if (Math.floor(ast[2][1]) == ast[2][1]) {
-                        if (ast[2][1] % 2 == 1) {
-                            ast = ['.-', ['^', ast[1][1], ast[2]]];
-                        } else {
-                            ast = ['^', ast[1][1], ast[2]];
-                        }
+        case 'call':
+            var ast2 = simplify(ast[2]);
+            switch (ast[1]) {
+                case 'sqrt':
+                    return simplifyFactor(['^', ast[2], ['num', 0.5]]);
+                case 'log':
+                    if (ast2[0] === '^') {
+                        return ['*', ast2[2], simplifyFactor(['call', 'log', ast2[1]])];
+                    } else if (ast2[0] === '*') {
+                        return ['+', simplifyFactor(['call', 'log', ast2[2]]), simplifyFactor(['call', 'log', ast2[1]])];
+                    } else if (ast2[0] === '/') {
+                        return ['-', simplifyFactor(['call', 'log', ast2[2]]), simplifyFactor(['call', 'log', ast2[1]])];
+                    } else {
+                        return [ast[0], ast[1], ast2];
                     }
-                }
-            }
-        }
-        if (ast[0] == 'call') {
-            var arg = ast[2],
-                simp = simplify(arg);
-            if (complexity(simp) < complexity(arg)) {
-                ast = ['call', ast[1], simp];
-            }
-            if (ast[1] == 'log') {
-                if (ast[2][0] == '^') {
-                    ast = ['*', ast[2][2], ['call', 'log', ast[2][1]]];
-                }
-            }
-            return ast;
-        }
-
-        return ast;
-    }
-
-    function simplifyTerm(ast) {
-        var newFactor;
-        do {
-            if (fixed(ast)) {
-                return ['num', evaluate(ast)];
-            }
-            newFactor = false;
-            var list = factorize(ast, false);
-            if (list.length > 1) {
-                for (var i = 0, j = 0; i < list.length; i++) {
-                    list[i] = simplifyFactor(list[i]);
-                    if (list[i][0] == '*' || list[i][0] == '/') {
-                        newFactor = true;
-                    }
-                    if (list[i][0] == 'num') {
-                        if (list[i][1] === 0) {
-                            return ['num', 0];
-                        }
-                        else if (list[i][1] != 1) {
-                            list[j++] = list[i];
+                case 'exp':
+//                    return simplifyFactor(['^', ['num', Math.E], ast2]);
+                    if (ast2[0] === '.-') {
+                        return ['^', simplifyFactor(['call', 'exp', ast2[1]]), ['num', -1]];
+                    } else if (ast2[0] === '+') {
+                        return ['*', simplifyFactor(['call', 'exp', ast2[1]]), simplifyFactor(['call', 'exp', ast2[1]])];
+                    } else if (ast2[0] === '-') {
+                        return ['/', simplifyFactor(['call', 'exp', ast2[1]]), simplifyFactor(['call', 'exp', ast2[1]])];
+                    } else if (ast2[0] === '*') {
+                        return simplifyFactor(['^', ['call', 'exp', ast2[1]], ast2[2]]);
+                    } else if (ast2[0] === 'call') {
+                        if (ast2[1] === 'log') {
+                            return simplifyFactor(ast2[2]);
                         }
                     } else {
-                        list[j++] = list[i];
+                        return [ast[0], ast[1], ast2];
                     }
-                }
-                if (j == 0) {
-                    return ['num', 1];
-                }
-                list.length = j;
-            } else {
-                ast = simplifyFactor(list[0]);
-                if (ast[0] == '*' || ast[0] == '/') {
-                    newFactor = true;
-                    continue;
+                default:
+                    return [ast[0], ast[1], ast2];
+            }
+
+        default:
+            throw 'Malform ast';
+    }
+}
+
+function doExplode(ast) {
+    var ast1, ast2;
+    switch (ast[0]) {
+        case '.+':
+            return canonical(ast[1]);
+        case '.-':
+            ast = canonical(ast[1]);
+            ast[0] = -ast[0];
+            return ast;
+        case 'num':
+        case 'ident':
+        case 'call':
+            return [1, [1, ast]];
+        case '+':
+            ast1 = canonical(ast[1]);
+            ast2 = canonical(ast[2]);
+            return ast1.concat(ast2);
+        case '-':
+            ast1 = canonical(ast[1]).slice(0);
+            ast2 = canonical(ast[2]);
+            for (var i = 0; i < ast2.length; i += 2) {
+                ast1.push(-ast2[i], ast2[i + 1]);
+            }
+            return ast1;
+        case '*':
+            ast1 = canonical(ast[1]);
+            ast2 = canonical(ast[2]);
+            var sum = [];
+            for (var i = 0; i < ast1.length; i += 2) {
+                var t0 = ast1[i],
+                    t1 = ast1[i + 1];
+                for (var j = 0; j < ast2.length; j += 2) {
+                    sum.push(t0 * ast2[j], t1.concat(ast2[j + 1]));
                 }
             }
-            if (list.length > 1) {
-                var value = 1;
-                for (var i = 0; i < list.length; i++) {
-                    if (list[i][0] == '.-') {
-                        value = -value;
-                        list[i] = list[i][1];
-                    }
+            return sum;
+        case '/':
+            return canonical(['*', ast[1], ['^', ast[2], ['num', -1]]]);
+        case '^':
+            if (ast[2][0] === 'num') {
+                var pow = ast[2][1], base = ast[1];
+                while (base[0] === '^' && base[2][0] === 'num') {
+                    pow *= ast[1][2][1];
+                    base = base[1];
                 }
-                list.sort(function(a, b) {
-                    return complexity(a) - complexity(b);
-                });
-                for (var i = 0; i < list.length; i++) {
-                    if (list[i][0] == 'num') {
-                        value *= list[i][1];
-                    } else {
-                        break;
-                    }
-                }
-                if (i || value != 1) {
-                    list.splice(0, i);
-                    ast = connect(list)
-                    if (value != 1) {
-                        if (value == 0) {
-                            return ['num', 0];
-                        } else if (value == -1) {
-                            ast = ['.-', ast];
-                        } else if (value > 0) {
-                            ast = ['*', ['num', value], ast];
-                        } else {
-                            ast = ['.-', ['*', ['num', -value], ast]];
-                        }
-                    }
-                } else {
-                    ast = connect(list);
-                }
+                ast = [1, [pow, base]];
             } else {
-                ast = simplifyFactor(list[0]);
-                if (ast[0] == '*' || ast[0] == '/') {
-                    newFactor = true;
-                }
+                ast = [1, [1, ast]];
             }
-        } while (newFactor);
-        return ast;
+            return ast;
+        default:
+            throw 'Malform ast';
+    }
+    return ast;
+}
+
+function canonical(ast) {
+    var astId = cache.find(ast);
+    if (explodeCache[astId]) {
+        return explodeCache[astId];
+    }
+    return explodeCache[astId] = doExplode(ast);
+}
+
+function product(list) {
+    if (list.length === 0) {
+        return ['num', 1];
+    }
+    var negAll = true;
+    for (var i = 0; i < list.length; i += 2) {
+        if (list[i] > 0) {
+            negAll = false;
+            break;
+        }
     }
 
-    window.simplifyExp = simplify = function(ast) {
-        if (fixed(ast)) {
-            return ['num', evaluate(ast)];
+    var result, term;
+    for (var i = 0; i < list.length; i += 2) {
+        if (list[i] === 0) {
+            continue;
         }
-        var list = expand(ast);
-        if (list.length > 1) {
-            for (var i = 0, j = 0; i < list.length; i++) {
-                list[i] = simplifyTerm(list[i]);
-                if (list[i][0] != 'num' || list[i][1] != 0) {
-                    list[j++] = list[i];
-                }
+        term = list[i + 1];
+        if (negAll) {
+            if (list[i] === -1) {
+                result = result ? ['*', result, term] : term;
+            } else {
+                result = result ? ['*', result, ['^', term, ['num', -list[i]]]] : ['^', term, ['num', -list[i]]];
             }
-            if (j == 0) {
-                return ['num', 0];
-            }
-            list.length = j;
         } else {
-            return simplifyTerm(list[0]);
-        }
-        if (list.length > 1) {
-            list.sort(function(a, b) {
-                return complexity(a) - complexity(b);
-            });
-            var value = 0;
-            for (var i = 0; i < list.length; i++) {
-                if (list[i][0] == 'num') {
-                    value += list[i][1];
-                } else {
-                    break;
-                }
+            if (list[i] === 1) {
+                result = result ? ['*', result, term] : term;
+            } else if (list[i] === -1 && result) {
+                result = ['/', result, term];
+            } else if (list[i] < 0 && result) {
+                result = ['/', result, ['^', term, ['num', -list[i]]]];
+            } else {
+                result = result ? ['*', result, ['^', term, ['num', list[i]]]] : ['^', term, ['num', list[i]]];
             }
-            if (i) {
-                if (value == 0) {
-                    list.splice(0, i);
-                } else {
-                    list.splice(0, i, ['num', value]);
-                }
-            }
-            return summation(list);
-        } else {
-            return simplifyTerm(list[0]);
         }
     }
-})();
+    if (negAll) {
+        return result ? ['/', ['num', 1], result] : ['num', 1];
+    } else {
+        return result || ['num', 1];
+    }
+
+}
+
+function summation(list) {
+    if (list.length === 0) {
+        return ['num', 0];
+    }
+    var negAll = true;
+    for (var i = 0; i < list.length; i += 2) {
+        if (list[i] > 0) {
+            negAll = false;
+            break;
+        }
+    }
+
+    var result, term;
+    for (var i = 0; i < list.length; i += 2) {
+        if (list[i] === 0) {
+            continue;
+        }
+        if (list[i + 1].length) {
+            term = product(list[i + 1]);
+            if (negAll) {
+                if (list[i] === -1) {
+                    result = result ? ['+', result, term] : term;
+                } else {
+                    result = result ? ['+', result, ['*', ['num', -list[i]], term]] : ['*', ['num', -list[i]], term];
+                }
+            } else {
+                if (list[i] === 1) {
+                    result = result ? ['+', result, term] : term;
+                } else if (list[i] === -1 && result) {
+                    result = ['-', result, term];
+                } else if (list[i] < 0 && result) {
+                    result = ['-', result, ['*', ['num', -list[i]], term]];
+                } else {
+                    result = result ? ['+', result, ['*', ['num', list[i]], term]] : ['*', ['num', list[i]], term];
+                }
+            }
+        } else {
+            if (negAll) {
+                result = result ? ['+', result, ['num', -list[i]]] : ['num', -list[i]];
+            } else {
+                result = result ? ['+', result, ['num', list[i]]] : ['num', list[i]];
+            }
+        }
+    }
+    if (negAll) {
+        return result ? ['.-', result] : ['num', 0];
+    } else {
+        return result || ['num', 0];
+    }
+
+}
+
+function sort(list) {
+    var unsortedRows = [], rowInd = [], result = [];
+    for (var i = 0; i < list.length; i += 2) {
+        var comp = 0, row = list[i + 1], indices = [];
+        for (var j = 0; j < row.length; j += 2) {
+            comp += complexity(row[j + 1]);
+            indices[j / 2] = j / 2;
+        }
+        rowInd[i / 2] = i / 2;
+        indices.sort(function(a, b) {
+            var cmp = astComp(row[a * 2 + 1], row[b * 2 + 1]);
+            if (cmp) return cmp;
+            return Math.abs(Math.log(Math.abs(row[a * 2]))) - Math.abs(Math.log(Math.abs(row[b * 2])));
+        });
+        var resultRow = [];
+        for (var j = 0; j < indices.length; j++) {
+            resultRow.push(row[indices[j] * 2], row[indices[j] * 2 + 1]);
+        }
+        resultRow.comp = comp;
+        unsortedRows.push(resultRow);
+    }
+    rowInd.sort(function(a, b) {
+        if (unsortedRows[a].comp === unsortedRows[b].comp) {
+            return Math.abs(list[a * 2]) - Math.abs(list[b * 2]);
+        } else {
+            return unsortedRows[a].comp - unsortedRows[b].comp;
+        }
+    });
+    for (var i = 0; i < rowInd.length; i++) {
+        result.push(list[rowInd[i] * 2], unsortedRows[rowInd[i]]);
+    }
+    return result;
+}
+
+function deform(ast) {
+
+}
+
+function mergeConstant(list) {
+    var constant = 1;
+    for (var i = 0; i < list.length; i += 2) {
+        if (list[i] === 0) {
+            continue;
+        } else {
+            if (list[i + 1][0] === 'num') {
+                constant *= Math.pow(list[i + 1][1], list[i]);
+            } else {
+                break;
+            }
+        }
+    }
+    return [1, ['num', constant]].concat(list.slice(i));
+}
+
+function optTerm(list) {
+    if (list.length === 0) {
+        return [];
+    }
+    list = mergeConstant(list);
+    var curr, last = simplifyFactor(list[1]), lastAst = cache.find(last), pow = list[0], result = [];
+    for (var i = 2; i < list.length; i += 2) {
+        while (i < list.length) {
+            curr = simplifyFactor(list[i + 1]);
+            if (lastAst != cache.find(curr)) {
+                break;
+            }
+            pow += list[i];
+            i += 2;
+        }
+        if (pow != 0) {
+            result.push(pow, last);
+            pow = 0;
+        }
+        if (i < list.length) {
+            pow = list[i];
+            last = curr;
+            lastAst = cache.find(last);
+        }
+    }
+    if (pow != 0) {
+        result.push(pow, last);
+    }
+    return result;
+}
+
+function termId(term) {
+    var result = [];
+    for (var i = 0; i < term.length; i += 2) {
+        result.push(term[i]);
+        result.push(cache.find(term[i + 1]));
+    }
+    return result.join(',');
+}
+
+function optCanonical(list) {
+    if (list.length === 0) {
+        return [];
+    }
+    var curr, currCoeff,
+        last = optTerm(list[1]), coeff = list[0];
+    if (last [0] === 1 && last[1][0] === 'num') {
+        coeff *= last[1][1];
+        last = last.slice(2);
+    }
+    var lastAst = termId(last), result = [];
+    for (var i = 2; i < list.length; i += 2) {
+        while (i < list.length) {
+            curr = optTerm(list[i + 1]), currCoeff = list[i];
+            if (curr[0] === 1 && curr[1][0] === 'num') {
+                currCoeff *= curr[1][1];
+                curr = curr.slice(2);
+            }
+            if (lastAst != termId(curr)) {
+                break;
+            }
+            coeff += currCoeff;
+            i += 2;
+        }
+        if (coeff !== 0) {
+            result.push(coeff, last);
+            coeff = 0;
+        }
+        if (i < list.length) {
+            coeff = currCoeff;
+            last = curr;
+            lastAst = termId(last);
+        }
+    }
+    if (coeff != 0) {
+        result.push(coeff, last);
+    }
+    return result;
+}
+
+factorize = function(ast) {
+
+}
+
+simplify = function(ast) {
+    var oldAst = ast;
+    ast = simplifyFactor(ast);
+    ast = canonical(ast);
+    ast = sort(ast);
+    ast = optCanonical(ast);
+    ast = summation(ast);
+    cache.join(oldAst, ast);
+    return ast;
+}

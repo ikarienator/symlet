@@ -1,8 +1,10 @@
 /**
  * Derivative
  */
-(function() {
-    function deriveFunc(func, arg) {
+(function () {
+    var deriv;
+
+    function deriveFunc (func, arg, va) {
         switch (func) {
             case 'sin':
                 return ['call', 'cos', arg];
@@ -23,7 +25,7 @@
             case 'log':
                 return ['/', ['num', 1], arg];
             case 'sinc':
-                return ['call', 'sincD', arg];
+                return deriv(['/', ['call', 'sin', arg], arg], va);
             case 'sh':
                 return ['call', 'ch', arg];
             case 'ch':
@@ -33,7 +35,7 @@
         }
     }
 
-    window.derivExp = function deriv(ast, va) {
+    window.derivExp = deriv = function (ast, va) {
         if (ast[0] === '.+' || ast[0] === '.-') {
             return [ast[0], deriv(ast[1], va)];
         } else if (ast[0] == '+' || ast[0] == '-') {
@@ -53,7 +55,7 @@
         } else if (ast[0] == 'ident') {
             return ['num', ast[1] == va ? 1 : 0];
         } else if (ast[0] == 'call') {
-            return ['*', deriveFunc(ast[1], ast[2]), deriv(ast[2], va)]
+            return ['*', deriveFunc(ast[1], ast[2], va), deriv(ast[2], va)]
         }
     }
 })();

@@ -1,0 +1,73 @@
+<!DOCTYPE HTML PUBLIC>
+<html>
+<head>
+    <title>Parser Test</title>
+    <script src="../Parse.js" type="text/javascript"></script>
+    <script src="../Check.js" type="text/javascript"></script>
+    <script src="../Derivate.js" type="text/javascript"></script>
+    <script src="../utils/DisjointSet.js" type="text/javascript"></script>
+    <script src="../utils/Evaluate.js" type="text/javascript"></script>
+    <script src="../utils/ASTCache.js" type="text/javascript"></script>
+    <script src="../utils/Compare.js" type="text/javascript"></script>
+    <script src="../utils/Heap.js" type="text/javascript"></script>
+    <script src="../utils/Polynomial.js" type="text/javascript"></script>
+    <script src="../Simplify.js" type="text/javascript"></script>
+    <script src="../Format.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var MATHTEX_CGI = 'http://twbs.in:8081/cgi-bin/mathtex.cgi';
+        onInputChange = function () {
+            var input = document.getElementById('input'),
+                    error = document.getElementById('error'),
+                    simp = document.getElementById('simp'),
+                    ast, dx, dy, dxy;
+            try {
+                ast = parseExp(input.value);
+                checkExp(ast);
+                ast = simplify(ast);
+                simp.src = MATHTEX_CGI + '?' + encodeURI(formatExp(ast, 'latex'));
+                error.innerHTML = '';
+            } catch (e) {
+                error.innerHTML = e;
+                simp.src = '';
+            }
+        }
+    </script>
+    <style>
+        .math {
+            width: 400px;
+            min-height: 150px;
+            margin: 7px;
+            box-sizing: border-box;
+            padding: 7px;
+            background-position: 7px 7px;
+            background-repeat: no-repeat;
+            overflow-y: visible;
+            overflow-x: scroll;
+        }
+
+        .math-inline {
+            line-height: 22px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="math-inline">
+    <i>f</i> =
+</div>
+<textarea id="input" class="math" onkeyup="onInputChange()">x^y*(y*1/x+log(x)*0)</textarea>
+<br/>
+<span id="error" style="color:red">&nbsp;</span><br/>
+
+Simplified:<br/>
+
+<div class="math" style="outline: 1px solid black">
+    <img id="simp"/>
+</div>
+<br/>
+<script type="text/javascript">
+  onInputChange();
+</script>
+
+</body>
+</html>
