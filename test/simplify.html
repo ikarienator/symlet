@@ -14,7 +14,7 @@
     <script src="../Simplify.js" type="text/javascript"></script>
     <script src="../Format.js" type="text/javascript"></script>
     <script type="text/javascript">
-        var MATHTEX_CGI = 'http://twibase0.info:8081/cgi-bin/mathtex.cgi';
+        var MATHTEX_CGI = 'http://twbs.in:8081/cgi-bin/mathtex.cgi';
         onInputChange = function () {
             var input = document.getElementById('input'),
                     error = document.getElementById('error'),
@@ -55,7 +55,7 @@
 <div class="math-inline">
     <i>f</i> =
 </div>
-<textarea id="input" class="math" onkeyup="onInputChange()"></textarea>
+<textarea id="input" class="math" onkeyup="onInputChange()">x^y*(y*1/x+log(x)*0)</textarea>
 <br/>
 <span id="error" style="color:red">&nbsp;</span><br/>
 
@@ -65,6 +65,9 @@ Simplified:<br/>
     <img id="simp"/>
 </div>
 <br/>
+<script type="text/javascript">
+  onInputChange();
+</script>
 
 </body>
 </html>

@@ -40,7 +40,7 @@ function complexity (ast) {
     } else if (ast[0] === 'ident') {
         return ast.complexity = 2;
     } else if (ast[0] == 'call') {
-        return funcComplexity[ast[1]] + complexity(ast[2]);
+        return ast.complexity = funcComplexity[ast[1]] + complexity(ast[2]);
     }
     var c = opComplexity[ast[0]], m = 1;
     for (var i = 1; i < ast.length; i++) {
