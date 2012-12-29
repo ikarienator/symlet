@@ -161,7 +161,7 @@ BigInteger.prototype = {
 
     /**
      *
-     * @param num
+     * @param {Number|BigInteger} num
      * @return {Number}
      */
     cmp: function (num) {
@@ -190,7 +190,7 @@ BigInteger.prototype = {
     add: function (num) {
         if (typeof num === 'number') {
             return this._add_1(num);
-        } else {
+        } else if (num instanceof BigInteger) {
             return this._add_bi(num);
         }
         throw new Error("Invalid type");
@@ -204,7 +204,7 @@ BigInteger.prototype = {
     minus: function (num) {
         if (typeof num === 'number') {
             return this._minus_1(num);
-        } else {
+        } else if (num instanceof BigInteger) {
             return this._minus_bi(num);
         }
         throw new Error("Invalid type");
@@ -271,6 +271,7 @@ BigInteger.prototype = {
             array[i] = carry & 32767;
             carry >>= 15;
         }
+        return this;
     },
 
 
@@ -293,6 +294,7 @@ BigInteger.prototype = {
             array[i] = carry & 32767;
             carry >>= 15;
         }
+        return this;
     },
 
     /**
@@ -438,8 +440,16 @@ BigInteger.prototype = {
      */
     divMod: function (num) {
         if (typeof num === 'number') {
-            return this._divmod_1(num);
+            if (num < 32768) {
+                return this._divmod_1(num);
+            } else {
+                num = BigInteger.fromNumber(num);
+            }
         }
+        if (num instanceof BigInteger) {
+            return this._divmod_bi(num);
+        }
+        throw new Error("Invalid type");
     },
 
     _divmod_1: function (num) {
@@ -453,5 +463,9 @@ BigInteger.prototype = {
             carry -= array[i] * num;
         }
         return [this, carry];
+    },
+
+    _divmod_bi: function (num) {
+        // TODO: Finish this.
     }
 };
