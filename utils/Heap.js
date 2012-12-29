@@ -1,4 +1,4 @@
-function Heap (cmp, arr) {
+function Heap(cmp, arr) {
     this.array = arr || [];
     this.cmp = cmp = cmp || function (a, b) {
         return a < b;

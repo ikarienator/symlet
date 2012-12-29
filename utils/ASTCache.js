@@ -1,4 +1,4 @@
-function ASTCache () {
+function ASTCache() {
     var me = this;
     me.djSet = new DisjointSet(function (a, b) {
         astComp(me.astList[a], me.astList[b]);

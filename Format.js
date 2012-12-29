@@ -15,7 +15,7 @@
         'log': '\\ln'
     };
 
-    window.formatExp = function format (ast, type) {
+    window.formatExp = function format(ast, type) {
         if (ast[0] === '.+' || ast[0] === '.-') {
             if (ast[1][0] == '+' || ast[1][0] == '-') {
                 if (type == 'latex') {

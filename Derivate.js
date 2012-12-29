@@ -4,7 +4,7 @@
 (function () {
     var deriv;
 
-    function deriveFunc (func, arg, va) {
+    function deriveFunc(func, arg, va) {
         switch (func) {
             case 'sin':
                 return ['call', 'cos', arg];

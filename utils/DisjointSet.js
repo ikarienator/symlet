@@ -2,7 +2,7 @@
  * @class DisjointSet
  * @constructor
  */
-function DisjointSet (cmp) {
+function DisjointSet(cmp) {
     this.diff = 0;
     this.parent = [];
     this.rank = [];
@@ -21,8 +21,9 @@ DisjointSet.prototype = {
     },
 
     find: function (a) {
-        if (this.parent[a] == a)
+        if (this.parent[a] == a) {
             return a;
+        }
         return this.parent[a] = this.find(this.parent[a]);
     },
 

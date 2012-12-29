@@ -1,4 +1,4 @@
-function fixed (ast) {
+function fixed(ast) {
     if (ast[0] === 'ident') {
         return !(ast[1] === 'x' || ast[1] === 'y' || ast[1] === 't');
     }
@@ -10,7 +10,7 @@ function fixed (ast) {
     return true;
 }
 
-function evaluate (ast) {
+function evaluate(ast) {
     switch (ast[0]) {
         case 'ident' :
             if (ast[1] === 'PI') {
@@ -58,10 +58,14 @@ function evaluate (ast) {
                 case 'log':
                     return Math.log(arg);
                 case 'sinc':
-                    if (arg === 0) return 1;
+                    if (arg === 0) {
+                        return 1;
+                    }
                     return Math.sin(arg) / arg;
                 case 'sincD':
-                    if (arg === 0) return 0;
+                    if (arg === 0) {
+                        return 0;
+                    }
                     return Math.cos(arg) / arg - Math.sin(arg) / (arg * arg);
                 case 'sh':
                     var exp = Math.exp(arg);

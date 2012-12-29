@@ -1,23 +1,23 @@
-function isNumber (x) {
+function isNumber(x) {
     return Object.prototype.toString.call(x) === '[object Number]';
 }
 
-function isInf (x) {
+function isInf(x) {
     return x === 'inf' || x === '+inf' || x === '-inf';
 }
 
-function isFiniteNumber (x) {
+function isFiniteNumber(x) {
     return Object.prototype.toString.call(x) === '[object Number]' && isFinite(x);
 }
-function testPositive (ast, va, value) {
+function testPositive(ast, va, value) {
 
 }
 
-function testFinite (ast, va, value) {
+function testFinite(ast, va, value) {
 
 }
 
-function neg (inf) {
+function neg(inf) {
     if (isFiniteNumber(inf)) {
         return -inf;
     } else {
@@ -35,16 +35,16 @@ neg.list = {
 /**
  * @returns number || 'inf' || '+inf' || '-inf' || 'finite'
  */
-function limit (ast, va, value, depth, limitCache) {
+function limit(ast, va, value, depth, limitCache) {
     limitCache = limitCache || {};
-//    if (limitCache[cache.find(ast)]) {
-//        return limitCache[cache.find(ast)];
-//    }
-//    limitCache[cache.find(ast)] =
+    //    if (limitCache[cache.find(ast)]) {
+    //        return limitCache[cache.find(ast)];
+    //    }
+    //    limitCache[cache.find(ast)] =
     return doLimit(ast, va, value, depth, limitCache);
 }
 
-function doLimit (ast, va, value, depth, limitCache) {
+function doLimit(ast, va, value, depth, limitCache) {
     if (depth > 10) {
         throw 'not concluded';
     }
@@ -67,8 +67,8 @@ function doLimit (ast, va, value, depth, limitCache) {
                     return -ast;
             }
         case '+':
-            var ast1 = limit(ast[1], va, value, depth, limitCache),
-                ast2 = limit(ast[2], va, value, depth, limitCache);
+            var ast1 = limit(ast[1], va, value, depth + 1, limitCache),
+                ast2 = limit(ast[2], va, value, depth + 1, limitCache);
             if (isFiniteNumber(ast1) && isFiniteNumber(ast2)) {
                 return ast1 + ast2;
             } else if (ast1 === '+inf' && ast2 === '-inf') {
@@ -96,10 +96,10 @@ function doLimit (ast, va, value, depth, limitCache) {
                 return 'finite';
             }
         case '-':
-            return limit(['+', ast[1], ['.-', ast[2]]], va, value, depth, limitCache);
+            return limit(['+', ast[1], ['.-', ast[2]]], va, value, depth + 1, limitCache);
         case '*':
-            var ast1 = limit(ast[1], va, value, depth, limitCache),
-                ast2 = limit(ast[2], va, value, depth, limitCache);
+            var ast1 = limit(ast[1], va, value, depth + 1, limitCache),
+                ast2 = limit(ast[2], va, value, depth + 1, limitCache);
             if (ast1 === 0) {
                 if (isInf(ast2)) {
                     return limit(['/', ast[1], simplify(['/', ['num', 1], ast[2]])], va, value, depth + 1);
@@ -127,13 +127,14 @@ function doLimit (ast, va, value, depth, limitCache) {
                     return 'inf'; // Separate this
                 }
             } else {
+                // ast1 == infinite
                 if (ast2 === 0) {
                     return limit(['/', ast[2], simplify(['/', ['num', 1], ast[1]])], va, value, depth + 1, limitCache);
                 } else if (isFiniteNumber(ast2)) {
-                    if (ast1 > 0) {
-                        return ast2;
+                    if (ast2 > 0) {
+                        return ast1;
                     } else {
-                        return neg(ast2);
+                        return neg(ast1);
                     }
                 } else if (ast2 === 'finite') {
                     return 'inf'; // Separate this
@@ -148,8 +149,8 @@ function doLimit (ast, va, value, depth, limitCache) {
                 }
             }
         case '/':
-            var ast1 = limit(simplify(ast[1]), va, value, depth, limitCache),
-                ast2 = limit(simplify(ast[2]), va, value, depth, limitCache);
+            var ast1 = limit(simplify(ast[1]), va, value, depth + 1, limitCache),
+                ast2 = limit(simplify(ast[2]), va, value, depth + 1, limitCache);
             if (isFiniteNumber(ast1) && isFiniteNumber(ast2)) {
                 if (ast2 === 0) {
                     if (ast1 === 0) {
@@ -196,18 +197,27 @@ function doLimit (ast, va, value, depth, limitCache) {
                 throw 'how ?';
             }
         case '^' :
-            var ast1 = limit(simplify(ast[1]), va, value, depth, limitCache),
-                ast2 = limit(simplify(ast[2]), va, value, depth, limitCache);
+            var ast1 = limit(simplify(ast[1]), va, value, depth + 1, limitCache),
+                ast2 = limit(simplify(ast[2]), va, value, depth + 1, limitCache);
+            debugger
             if (isFiniteNumber(ast1)) {
                 if (isFiniteNumber(ast2)) {
                     if (ast1 === 1) {
                         return 1;
                     } else if (ast1 === 0 && ast2 === 0) {
-                        return limit(['call', 'exp', ['*', ast[2], ['call', 'log', ast[1]]]], va, value, depth, limitCache);
+                        return limit(['call', 'exp', ['*', ast[2], ['call', 'log', ast[1]]]], va, value, depth + 1, limitCache);
                     } else if (ast1 < 0) {
                         var rat = toRational(ast2);
                         if (rat[0] % 2 === 0 || rat[1] % 2 === 0) {
-
+                            return Math.pow(Math.abs(ast1), rat[1] / rat[0]);
+                        } else {
+                            return -Math.pow(Math.abs(ast1), rat[1] / rat[0]);
+                        }
+                    } else if (ast1 === 0) {
+                        if (ast2 > 0) {
+                            return 0;
+                        } else {
+                            return 'inf';
                         }
                     }
                     return Math.pow(ast1, ast2);
@@ -247,13 +257,13 @@ function doLimit (ast, va, value, depth, limitCache) {
             } else {
 
             }
-            return limit(['call', 'exp', ['*', ast[2], ['call', 'log', ast[1]]]], va, value, depth, limitCache);
+            return limit(['call', 'exp', ['*', ast[2], ['call', 'log', ast[1]]]], va, value, depth + 1, limitCache);
         case 'num' :
             return ast[1];
         case 'ident' :
             return value;
         case 'call' :
-            var ast2 = limit(simplify(ast[2]), va, value, depth, limitCache);
+            var ast2 = limit(simplify(ast[2]), va, value, depth + 1, limitCache);
             if (isFiniteNumber(ast2)) {
                 ast2 = evaluate(['call', ast[1], ['num', ast2]]);
                 if (ast2 === Infinity) {
@@ -325,4 +335,4 @@ limit.infMap = {
     'sh': 'inf',
     'ch': '+inf',
     'th': 'inf'
-}
+};

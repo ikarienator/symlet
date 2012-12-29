@@ -1,8 +1,8 @@
-function polynomialQ (ast, va) {
+function polynomialQ(ast, va) {
 
 }
 
-function toRational (real, eps) {
+function toRational(real, eps) {
     eps = eps || 1e-10;
     var int = Math.floor(real), frac = real - int;
     if (frac < eps) {

@@ -2,7 +2,7 @@
  * Parsing
  */
 (function () {
-    function stream (string) {
+    function stream(string) {
         this.string = string.split('');
         this.position = 0;
     }
@@ -30,7 +30,7 @@
         }
     };
 
-    function expr (stream) {
+    function expr(stream) {
         var t = term(stream), value;
         value = t;
         while (!stream.skipws()) {
@@ -50,7 +50,7 @@
         return value;
     }
 
-    function term (stream) {
+    function term(stream) {
         var p = posNeg(stream), value;
         value = p;
         while (!stream.skipws()) {
@@ -70,7 +70,7 @@
         return value;
     }
 
-    function posNeg (stream) {
+    function posNeg(stream) {
         if (stream.skipws()) {
             throw 'Factor expected.';
         }
@@ -83,7 +83,7 @@
         return pow(stream);
     }
 
-    function pow (stream) {
+    function pow(stream) {
         var p = factor(stream), value;
         value = p;
         while (!stream.skipws()) {
@@ -99,7 +99,7 @@
         return value;
     }
 
-    function factor (stream) {
+    function factor(stream) {
         if (stream.skipws()) {
             throw 'Factor expected.';
         }
@@ -140,7 +140,7 @@
         throw 'Factor expected.';
     }
 
-    function fract (stream) {
+    function fract(stream) {
         if (stream.eof()) {
             return 0;
         }
@@ -165,7 +165,7 @@
         }
     }
 
-    function expon (stream) {
+    function expon(stream) {
         if (stream.eof()) {
             return 1;
         }
@@ -198,7 +198,7 @@
         }
     }
 
-    function number (stream) {
+    function number(stream) {
         var p = stream.peek(), val = 0;
         if (p === '.') {
             val = fract(stream);
@@ -221,8 +221,10 @@
         return ['num', val];
     }
 
-    function ident (stream) {
-        if (stream.eof()) throw 'Identifier expected';
+    function ident(stream) {
+        if (stream.eof()) {
+            throw 'Identifier expected';
+        }
         var p = stream.peek(), value = [];
         if ('a' <= p && p <= 'z' || 'A' <= p && p <= 'Z' || a === '_') {
             value.push(p);

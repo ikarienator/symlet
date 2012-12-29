@@ -31,7 +31,7 @@ var
         'acos': 21
     };
 
-function complexity (ast) {
+function complexity(ast) {
     if (ast.complexity) {
         return ast.complexity;
     }
@@ -50,25 +50,41 @@ function complexity (ast) {
     return ast.complexity = c;
 }
 
-function astComp (ast1, ast2) {
-    if (complexity(ast1) < complexity(ast2)) return -1;
-    if (ast2.complexity < ast1.complexity) return 1;
+function astComp(ast1, ast2) {
+    if (complexity(ast1) < complexity(ast2)) {
+        return -1;
+    }
+    if (ast2.complexity < ast1.complexity) {
+        return 1;
+    }
     if (ast1[0] != ast2[0]) {
         for (var i = 0; i < list.length; i++) {
-            if (ast1[0] == list[i]) return -1;
-            if (ast2[0] == list[i]) return 1;
+            if (ast1[0] == list[i]) {
+                return -1;
+            }
+            if (ast2[0] == list[i]) {
+                return 1;
+            }
         }
     }
     if (ast1[0] === 'call') {
         if (ast1[1] != ast2[1]) {
             for (var i = 0; i < funcs.length; i++) {
-                if (ast1[1] == funcs[i]) return -1;
-                if (ast2[1] == funcs[i]) return 1;
+                if (ast1[1] == funcs[i]) {
+                    return -1;
+                }
+                if (ast2[1] == funcs[i]) {
+                    return 1;
+                }
             }
         }
     } else if (ast1[0] === 'ident' || ast1[0] === 'num') {
-        if (ast1[1] < ast2[1]) return -1;
-        if (ast1[1] > ast2[1]) return 1;
+        if (ast1[1] < ast2[1]) {
+            return -1;
+        }
+        if (ast1[1] > ast2[1]) {
+            return 1;
+        }
         return 0;
     } else {
         var comp = astComp(ast1[1], ast2[1]);

@@ -13,7 +13,7 @@
             'E', 'PI'
         ];
 
-    function expr (ast) {
+    function expr(ast) {
         switch (ast[0]) {
             case '.+':
             case '.-':

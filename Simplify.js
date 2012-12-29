@@ -54,7 +54,7 @@ function doSimplifyFactor(ast) {
                         return [ast[0], ast[1], ast2];
                     }
                 case 'exp':
-//                    return simplifyFactor(['^', ['num', Math.E], ast2]);
+                    //                    return simplifyFactor(['^', ['num', Math.E], ast2]);
                     if (ast2[0] === '.-') {
                         return ['^', simplifyFactor(['call', 'exp', ast2[1]]), ['num', -1]];
                     } else if (ast2[0] === '+') {
@@ -248,9 +248,11 @@ function sort(list) {
             indices[j / 2] = j / 2;
         }
         rowInd[i / 2] = i / 2;
-        indices.sort(function(a, b) {
+        indices.sort(function (a, b) {
             var cmp = astComp(row[a * 2 + 1], row[b * 2 + 1]);
-            if (cmp) return cmp;
+            if (cmp) {
+                return cmp;
+            }
             return Math.abs(Math.log(Math.abs(row[a * 2]))) - Math.abs(Math.log(Math.abs(row[b * 2])));
         });
         var resultRow = [];
@@ -260,7 +262,7 @@ function sort(list) {
         resultRow.comp = comp;
         unsortedRows.push(resultRow);
     }
-    rowInd.sort(function(a, b) {
+    rowInd.sort(function (a, b) {
         if (unsortedRows[a].comp === unsortedRows[b].comp) {
             return Math.abs(list[a * 2]) - Math.abs(list[b * 2]);
         } else {
@@ -373,11 +375,11 @@ function optCanonical(list) {
     return result;
 }
 
-factorize = function(ast) {
+factorize = function (ast) {
 
 }
 
-simplify = function(ast) {
+simplify = function (ast) {
     var oldAst = ast;
     ast = simplifyFactor(ast);
     ast = canonical(ast);
