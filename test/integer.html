@@ -2,10 +2,30 @@
 <html>
 <head>
     <title>Integers</title>
-    <script type="text/javascript" src="../numeric/Integer.js"></script>
+    <script type="text/javascript" src="../numeric/FastFourierTransform.js"></script>
+    <script type="text/javascript" src="../numeric/BigInteger.js"></script>
 
 </head>
 <body>
+<script>
+    var str1 = [];
+    var str2 = [];
+    str1.push('1');
+    for (var i = 0; i < 40; i++) {
+        str1.push((i * 5.123452834285692364912319233) % 10 >> 0);
+        str2.push((i * 6.525283462861728638123) % 10 >> 0);
+    }
+    str1 = str1.join('');
+    str2 = str2.join('');
+    console.log(str1);
+    console.log(str2);
+    var b1 = BigInteger.fromString(str1),
+            b2 = BigInteger.fromString(str2);
 
+    console.log(b1.clone().add(b2).toString());
+    console.log(b1.clone().minus(b2).toString());
+    console.log(b1.clone().mult(b2).toString());
+    console.log(b1.clone().divMod(12345).toString());
+</script>
 </body>
 </html>
