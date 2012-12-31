@@ -1,12 +1,12 @@
 /**
  * Big Integer
+ * @param {Array} [array]
  * @constructor
  */
-function BigInteger() {
+function BigInteger(array) {
     // 0 .. 32767 to avoid overflow in multiplication
-    this.array = [];
+    this.array = array || [];
 }
-
 
 BigInteger.DIGITS = "0123456789";
 
@@ -159,27 +159,69 @@ BigInteger.prototype = {
         return this;
     },
 
+    _resize: function (length) {
+        var array = this.array, i = array.length;
+        array.length = length;
+        for (; i < length; i++) {
+            array[i] = 0;
+        }
+    },
+
     /**
      *
      * @param {Number|BigInteger} num
      * @return {Number}
      */
     cmp: function (num) {
-        this.normalize();
         if (typeof num === 'number') {
             num = BigInteger.fromNumber(num);
         } else {
             num.normalize();
         }
-        if (this.array.length != num.array.length) {
-            return this.array.length > num.array.length ? 1 : -1;
+        return this._cmp_offset_a(num.array, 0);
+    },
+
+    /**
+     *
+     * @param {BigInteger} num
+     * @param {Number} offset
+     * @return {Number}
+     * @private
+     */
+    _cmp_offset_a: function (array, offset) {
+        if (this.array.length + offset != array.length) {
+            return this.array.length + offset > array.length ? 1 : -1;
         }
-        for (var i = this.array.length; i >= 0; i--) {
-            if (this.array[i] != num.array[i]) {
-                return this.array[i] > num.array[i] ? 1 : -1;
+        for (var i = this.array.length - 1; i >= 0; i--) {
+            if (this.array[i] != array[i + offset]) {
+                return this.array[i] > array[i + offset] ? 1 : -1;
             }
         }
         return 0;
+    },
+
+    /**
+     * "operator <<="
+     * @param {Number} bits
+     * @return {Number} this
+     */
+    shiftLeft: function (bits) {
+        var array = this.array, len = array.length, i, j, block_shift;
+        if (bits >= 15) {
+            block_shift = bits / 15 >> 0;
+            bits %= 15;
+        }
+        if ((array[len - 1] << bits) >= 1 << 15) {
+            array[len++] = 0;
+        }
+        array.length += block_shift;
+        for (i = len - 1; i > 0; i--) {
+            array[i + block_shift] = (array[i] << bits) | (array[i - 1] >> (15 - bits));
+        }
+        array[block_shift] = array[0] << bits;
+        for (i = 0; i < block_shift; i++) {
+            array[i] = 0;
+        }
     },
 
     /**
@@ -223,9 +265,8 @@ BigInteger.prototype = {
             len2 = array2.length;
         if (len < len2) {
             array.length = len2;
-            i = len;
-            while (i < len2) {
-                array[i++] = 0;
+            while (len < len2) {
+                array[len++] = 0;
             }
         }
         for (i = 0, carry = 0; i < len2; i++) {
@@ -233,8 +274,11 @@ BigInteger.prototype = {
             array[i] = carry & 32767;
             carry >>= 15;
         }
-        if (carry) {
+        while (carry) {
+            carry += array[i];
             array[i] = carry & 32767;
+            carry >>= 15;
+            i++;
         }
         return this;
     },
@@ -282,7 +326,7 @@ BigInteger.prototype = {
     _minus_bi: function (num) {
         var array = this.array,
             array2 = num.array,
-            len2 = array.length,
+            len2 = array2.length,
             i, carry = 0;
         for (i = 0, carry; i < len2; i++) {
             carry += array[i] - array2[i];
@@ -386,6 +430,7 @@ BigInteger.prototype = {
             array[i++] = carry & 32767;
             carry >>= 15;
         }
+        return this;
     },
 
     /**
@@ -434,20 +479,25 @@ BigInteger.prototype = {
 
 
     /**
-     * this divided by num and returns [this, reminder].
+     * this divided by num and returns remainder.
      * @param {BigInteger|Number} num
      * @return {Array}
      */
     divMod: function (num) {
         if (typeof num === 'number') {
+            if (num === 0) {
+                throw new Error('Divide by zero');
+            }
             if (num < 32768) {
-                return this._divmod_1(num);
+                var r = this._divmod_1(num);
+                return [this, r];
             } else {
                 num = BigInteger.fromNumber(num);
             }
         }
         if (num instanceof BigInteger) {
-            return this._divmod_bi(num);
+            var r = this._divmod_bi(num);
+            return [this, r];
         }
         throw new Error("Invalid type");
     },
@@ -462,10 +512,98 @@ BigInteger.prototype = {
             array[i] = carry / num >> 0;
             carry -= array[i] * num;
         }
-        return [this, carry];
+        return BigInteger.fromNumber(carry);
     },
 
     _divmod_bi: function (num) {
-        // TODO: Finish this.
+        num.normalize();
+        if (num.array.length === 0) {
+            throw new Error('Divide by zero');
+        }
+        if (num.array.length === 1) {
+            return this._divmod_1(num.array[0]);
+        }
+        var array = this.array.slice(0),
+            len = array.length,
+            array2 = num.array,
+            len2 = array2.length,
+            a, b = 0, c = array[len - 1], m,
+            temp, j, carry, guess, cmp;
+        switch (this.cmp(num)) {
+            case -1:
+                this.array.length = 0;
+                return num.clone();
+            case 0:
+                this.array.length = 1;
+                this.array[0] = 1;
+                return new BigInteger();
+        }
+        this.array.length = len - len2 + 1;
+        m = (array2[len2 - 1] << 15) + array2[len2 - 2];
+        for (var offset = len - len2; offset >= 0; offset--) {
+            a = array[len2 + offset] || 0;
+            b = array[len2 + offset - 1];
+            c = array[len2 + offset - 2];
+            // We want to calculate q=[(an+b)/(cn+d)] where b and d are in [0,n).
+            // Our goal is to guess q=[a/c]+R.
+            // -2 <= [(an+b)/(cn+d)]-[a/c] <= 2
+
+            guess = Math.floor((((a * 32768 + b) * 32768) + c) / m);
+            temp = num.clone();
+            temp._mult_1(guess);
+            temp._resize(len2 + (+!!a));
+
+            while (1 == (cmp = temp._cmp_offset_a(array, offset))) { // Too big a guess
+                if (guess == 0) {
+                    break;
+                }
+                guess--;
+                if (guess == 0) {
+                    break;
+                }
+                temp._minus_bi(num);
+                temp._resize(len2 + (+!!a));
+            }
+
+            for (j = 0, carry = 0; j < temp.array.length; j++) {
+                carry += array[j + offset] - temp.array[j];
+                array[j + offset] = carry & 32767;
+                carry >>= 15;
+            }
+
+            // This should never happen
+            // while (carry) {
+            //     array[offset + (j++)] = carry & 32767;
+            //     carry >>= 15;
+            // }
+            if (array.length > offset + len2 && array[offset + len2] == 0) {
+                array.length--;
+            }
+            if (cmp == 0) {
+                // We found it
+                a = b = c = 0;
+            } else { // cmp == -1
+                // Might be too small, might be right.
+                // Never try more than 4 times
+                while (-1 == num._cmp_offset_a(array, offset)) { // Too big a guess
+                    guess++;
+                    for (j = 0, carry = 0; j < len2; j++) {
+                        carry += array[j + offset] - array2[j];
+                        array[j + offset] = carry & 32767;
+                        carry >>= 15;
+                    }
+                    if (carry) {
+                        carry += array[j + offset];
+                        array[j + offset] = carry & 32767;
+                        carry >>= 15;
+                    }
+                }
+            }
+            if (array.length > offset + len2 && array[offset + len2] == 0) {
+                array.length--;
+            }
+            this.array[offset] = guess;
+        }
+        return new BigInteger(array);
     }
 };
